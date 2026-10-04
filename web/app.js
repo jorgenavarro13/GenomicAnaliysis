@@ -1,11 +1,9 @@
-const chain = ['A', 'G', 'C', 'T', 'A', 'G', 'C', 'T', 'A', 'G', 'C', 'T'];
-const hello = document.getElementsByClassName('hello')[0];
-
+const chain = ['A', 'A', 'A', 'T', 'A', 'G', 'C', 'T', 'A', 'G', 'C', 'T', 'A', 'A', 'A', 'T', 'A', 'G', 'C', 'T', 'A', 'G', 'C', 'T', 'A', 'A', 'A', 'T', 'A', 'G', 'C', 'T', 'A', 'G', 'C', 'T', 'A', 'A', 'A', 'T', 'A', 'G', 'C', 'T', 'A', 'G', 'C', 'T', 'A', 'A', 'A', 'T', 'A', 'G', 'C', 'T', 'A', 'G', 'C', 'T', 'A', 'A', 'A', 'T', 'A', 'G', 'C', 'T', 'A', 'G', 'C', 'T', 'A', 'A', 'A', 'T', 'A', 'G', 'C', 'T', 'A', 'G', 'C', 'T', 'A', 'A', 'A', 'T', 'A', 'G', 'C', 'T', 'A', 'G', 'C', 'T'];
 const colorMapping = {
-    'A' : "orange",
-    'G' : "green",
-    'C' : "blue",
-    'T' : "gray"
+    'A' : "#6a3d7c",
+    'G' : "#ee7a62",
+    'C' : "#f4d36a",
+    'T' : "#a9c4a1"
 }
 
 const oppositeMapping = {
@@ -17,42 +15,70 @@ const oppositeMapping = {
 
 const genContainer = document.getElementById('gen-container');
 
+const basesPerTurn = 20.5;  // like real B-DNA
+const spacing = 28;         // px between base pairs
+const amplitude = 30;       // px each strand swings from the middle
+const helixWidth = chain.length * spacing;
+const middle = amplitude + 10;
+const minHalfHeight = 12;   // px, keeps the letters readable where the strands cross
+const visibleBases = 20;    // how many base pairs fit in the sliding window
 
-const horizontalContainer = document.createElement('div');
-horizontalContainer.classList.add('horizontal-container');
-
-
-
-for(let i=0; i<chain.length; i++){
-    let pair = document.createElement('div');
-    pair.id = i;
-    let nucleuotid = document.createElement('div');
-    nucleuotid.classList.add("nucleotid");
-    nucleuotid.style.backgroundColor = colorMapping[chain[i]];
-    
-    pair.classList.add("pair");
-    pair.append(nucleuotid);
-
-    let oppositeNucleotide = document.createElement('div');
-    oppositeNucleotide.classList.add("nucleotid");
-    oppositeNucleotide.style.backgroundColor = colorMapping[oppositeMapping[chain[i]]];
-
-    pair.append(oppositeNucleotide);
-
-    horizontalContainer.append(pair);
-    let line = document.createElement('div');
-    line.classList.add("line");
-    horizontalContainer.append(line);
+// Angle of the helix at a horizontal position
+function angleAt(x) {
+    return (2 * Math.PI * x) / (basesPerTurn * spacing);
 }
 
-let superiorHelixLine = document.createElement('div');
-superiorHelixLine.classList.add('helix-line');
+const helix = document.createElement('div');
+helix.classList.add('helix');
+helix.style.width = `${helixWidth}px`;
+helix.style.height = `${middle * 2}px`;
 
-let inferiorHelixLine = document.createElement('div');
-inferiorHelixLine.classList.add('helix-line')
 
-genContainer.append(superiorHelixLine);
-genContainer.append(horizontalContainer);
-genContainer.append(inferiorHelixLine);
 
-console.log(genContainer);
+// Base pairs: one bar per pair, split into two colored halves
+for (let i = 0; i < chain.length; i++) {
+    const x = i * spacing + spacing / 2;
+    const offset = amplitude * Math.sin(angleAt(x));
+    const halfHeight = Math.max(Math.abs(offset), minHalfHeight);
+    const base = chain[i];
+    const opposite = oppositeMapping[base];
+
+    const pair = document.createElement('div');
+    pair.classList.add('pair');
+    pair.style.left = `${x}px`;
+    pair.style.top = `${middle - halfHeight}px`;
+    pair.style.height = `${halfHeight * 2}px`;
+
+    // The first strand sits below the middle when offset > 0
+    const [topBase, bottomBase] = offset > 0 ? [opposite, base] : [base, opposite];
+    for (const letter of [topBase, bottomBase]) {
+        const nucleotide = document.createElement('div');
+        nucleotide.classList.add('nucleotid');
+        nucleotide.style.backgroundColor = colorMapping[letter];
+        nucleotide.textContent = letter;
+        pair.append(nucleotide);
+    }
+
+    helix.append(pair);
+}
+
+// Sliding window: only `visibleBases` pairs are visible, scroll to see the rest
+const helixWindow = document.createElement('div');
+helixWindow.classList.add('helix-window');
+helixWindow.tabIndex = 0;   // lets the arrow keys scroll it once clicked
+helixWindow.style.width = `${Math.min(visibleBases, chain.length) * spacing}px`;
+helixWindow.append(helix);
+
+const positionLabel = document.createElement('p');
+positionLabel.classList.add('helix-position');
+
+genContainer.append(helixWindow, positionLabel);
+
+function updatePosition() {
+    const windowStart = Math.round(helixWindow.scrollLeft / spacing);
+    const windowEnd = Math.min(windowStart + visibleBases, chain.length);
+    positionLabel.textContent = `${windowStart + 1}–${windowEnd} of ${chain.length}`;
+}
+
+helixWindow.addEventListener('scroll', updatePosition);
+updatePosition();
