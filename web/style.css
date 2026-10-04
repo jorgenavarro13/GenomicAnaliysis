@@ -1,0 +1,30 @@
+.hello {
+    color: blue;
+    font-size: 24px;
+}
+
+.nucleotid {
+    width: 5px;
+    height: 5px;
+}
+
+.horizontal-container {
+    display: flex;
+    flex-direction: horizontal;   
+}
+
+.pair{
+    width : 5px;
+    height: 10px;
+}
+
+.line {
+    width: 3px;
+    height: 10px;
+}
+
+.helix-line{
+    min-height: 2px;
+    display: flex;
+    background-color: aquamarine;
+}
