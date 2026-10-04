@@ -4,36 +4,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Genomic Analysis</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="main.css">
+    <link rel="stylesheet" href="genContainer.css">
 </head>
 <body>
-    <div id="container"> 
-        <div id="gen-container">
-            
-            <h1 id="gen-title">Genomic Analysis</h1>
-            <p> Developed for "Design of advanced algorithms"</p>
-            <p> Dra. Maria Valentina Narváez Teran</p>
-
-            <p> Developers</p>
-            <ul>
-                <li>Jorge Arturo Montiel Navarro</li>
-                <li>Nicté Allelen Pineda Jiménez</li>
-                <li>Sylvie Aylin Zabetoglu González</li>
-            </ul>
-
-            <div>
-                <p> Genomic analysis tool to identify</p>
-                
-                
-                <ul>
-                    <li>Indexes of apparition of certain genes</li>
-                    <li>Longest palindrome inside the sequence</li>
-                    <li>Identifie the sequence of aminoacids</li>
-                    <li>Coincidence of genes</li>
-                </ul>
+    <div id="container">
+        <div id="gen-container" class="gen-container">
+            <div class="hero-text">
+                <h1 id="gen-title">Genomic<br>Analysis</h1>
+                <div class="credits">
+                    <span class="credits-badge"></span>
+                    <div class="credits-text">
+                        <p>Análisis y diseño de algoritmos avanzados</p>
+                        <p>Dra. Maria Valentina Narváez Teran</p>
+                    </div>
+                </div>
             </div>
         </div>
-        <script src="app.js"></script>
+        <script src="genContainer.js"></script>
+    </div>
+
+    <div>
+        <h1> Secuencias desde archivos</h1>
+        <div id="file">
+
+        </div>
+    </div>
+    <script src="api.js" type="module"></script>
+    <script src="sequenceSlot.js" type="module"></script>
+    <div id="footer">
+        <p>© 2026 Genomic Analysis. Jorge Arturo Montiel Navarro, Nicté Allelen Pineda Jiménez, Sylvie Aylin Zabetoglu González.</p>
     </div>
 </body>
 </html>
