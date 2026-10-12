@@ -36,4 +36,20 @@ async function findGenInSequence(genToFind) {
   return res.json();
 }
 
-export { requestSequence, findGenInSequence };
+async function findPalindromeInSequence(sequence) {
+    if (!sequence || sequence_options[sequence] === undefined) throw new Error('No sequence provided');
+
+    const res = await fetch(`${C_API_URL}/findPalindrome`, {
+    method: 'POST',
+    body: JSON.stringify({ 
+      sequence_file : sequence_options[sequence],
+      sequence_name : sequence
+    }),
+  });
+
+  if (!res.ok) throw new Error(`POST /findPalindrome → ${res.status}`);
+  return res.json();
+}
+
+
+export { requestSequence, findGenInSequence, findPalindromeInSequence };
