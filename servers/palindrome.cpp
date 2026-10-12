@@ -6,8 +6,8 @@ namespace {
     unordered_map<char,char> oppositeMapping = {
         {'A','T'},
         {'G','C'},
-        {'T', 'A'},
-        {'C', 'G'}
+        {'T','A'},
+        {'C','G'}
     };
 }
 
@@ -22,9 +22,12 @@ namespace {
 
     Space Complexity: O(n)
     We have to arrays of aproximate size 2*n, (values and actual manacher string) which is reduced to O(n)
+
+    What happens when no palindrome is found?
+    Ex. AAAAA  or A -> returns {0,-1} , we only need to ensure that begin < right, and the maximum palindrome in those cases would be of length 1
 */
 
-pair<int,int> genPalindrome(vector<char> gene){
+pair<int,int> genPalindrome(vector<char> &gene){
 
     // Create the manacher array
     vector<char> manacherArray;
@@ -44,6 +47,11 @@ pair<int,int> genPalindrome(vector<char> gene){
     vector<int> P (n, 0);
 
     for(int i=1; i<n-1; i++){
+        if( manacherArray[i] != '$') continue; // Important, we only want to check positions with $, why?
+                                                // Basically because there's no possible palindrome that can be generated with a letter in the middle, 
+                                                // the reason is simple, when you reverse the generated palindrome which was generated with a letter in the middle,
+                                                //  that letter being "reversed" generates a invalid palindrome because that central one no longer coincides 
+                                                // ex (ATT) reversed is -> (AAT) it fails because of the central one. Thats why we skip this central letters in a palindrome 
         if(i<limit){
             int simetric = 2 * center - i;
             P[i] = min(limit -i, P[simetric]);
@@ -77,13 +85,8 @@ void saveToFile(string filename, vector<char> & sequence, pair<int,int> & result
     for(int i = result.first; i <= result.second; i++){
         file<<sequence[i];
     }
-    file.close();
 }
-
 /*
-  vector<char> test = {
-        'A','T', 'G', 'C', 'T', 'G', 'A','T', 'C', 'T', 'A','T'
-    };
 
 vector<char> convert(string s){
     vector<char> c;
@@ -91,12 +94,15 @@ vector<char> convert(string s){
     return c;
 }
 
-    int main(){
-        
-        vector<char> sequence = test;
-        pair<int,int> result = genPalindrome(sequence);
-        saveToFile("../data/palindromes/palindrome_result.txt", sequence, result);
-        return 0;
-    }
+int main(){
+    
+    vector<char> sequence = test;
+    pair<int,int> result = genPalindrome(sequence);
+    saveToFile("../data/palindromes/palindrome_result.txt", sequence, result);
+    
+    pair<int,int> indexes = genPalindrome(convert("AATTAATT"));
+    cout<<indexes.first<<" ,"<<indexes.second<<endl;
+    return 0;
+}
 
 */
