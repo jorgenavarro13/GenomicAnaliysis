@@ -1,5 +1,5 @@
 
-export const C_API_URL = 'http://localhost:8080';
+const C_API_URL = 'http://localhost:8080';
 
 const sequence_options = {
     "Wuhan"  : "../data/SARS-COV-2-MN908947.3.txt",
@@ -9,7 +9,7 @@ const sequence_options = {
     "Texas": "../data/SARS-COV-2-MT106054.1.txt",
 };
 
-export async function requestSequence(sequence) {
+async function requestSequence(sequence) {
     if (!sequence || sequence_options[sequence] === undefined) throw new Error('No sequence provided');
 
     const res = await fetch(`${C_API_URL}/sequence`, {
@@ -20,3 +20,20 @@ export async function requestSequence(sequence) {
   if (!res.ok) throw new Error(`POST /sequence → ${res.status}`);
   return res.json();
 }
+
+async function findGenInSequence(genToFind) {
+    if (!genToFind || sequence_options[genToFind] === undefined) throw new Error('No gene to find provided');
+
+    const res = await fetch(`${C_API_URL}/findGenInSequence`, {
+    method: 'POST',
+    body: JSON.stringify({ 
+      gene_file : sequence_options[genToFind],
+      sequence_file : sequence_options["Wuhan"] 
+    }),
+  });
+
+  if (!res.ok) throw new Error(`POST /findGenInSequence → ${res.status}`);
+  return res.json();
+}
+
+export { requestSequence, findGenInSequence };

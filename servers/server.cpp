@@ -53,5 +53,30 @@ int main() {
     });
     
 
+    svr.Post("/findGenInSequence", [](const Request& req, Response &res) {
+
+        res.set_header("Access-Control-Allow-Origin", "*"); 
+        json request_data = json::parse(req.body);
+        cout << "Received request data: " << request_data.dump() << endl;
+        string gene_file = request_data["gene_file"];
+        cout << "Gene: " << gene_file << endl;
+        string sequence_file = request_data["sequence_file"];
+        cout<< "Sequence: " << sequence_file << endl;
+
+        vector<char> sequence = readFile(sequence_file);
+        vector<char> gene = readFile(gene_file);
+
+        pair<int,int> result = findGeneInSequence(sequence, gene);
+
+        cout << "Result: " << result.first << ", " << result.second << endl;
+        // Parse the sequence
+
+        json response_data;
+        response_data["begin"] = result.first;
+        response_data["end"] = result.second;
+        cout << response_data.dump() << endl;
+        res.set_content(response_data.dump(), "application/json");
+    });
+
     svr.listen("0.0.0.0", 8080);
 }
