@@ -5,6 +5,7 @@
 
 // MY LIBRARIES
 #include "./coincidence.h"
+#include "./palindrome.h"
 
 using json = nlohmann::json;
 using namespace std;
@@ -69,11 +70,49 @@ int main() {
         pair<int,int> result = findGeneInSequence(sequence, gene);
 
         cout << "Result: " << result.first << ", " << result.second << endl;
-        // Parse the sequence
+        
+        json found = json::array();
+        for (int i=result.first; i<=result.second; i++) {
+            found.push_back(string(1, sequence[i]));
+        }
 
         json response_data;
         response_data["begin"] = result.first;
         response_data["end"] = result.second;
+        response_data["found"]= found;
+        cout << response_data.dump() << endl;
+        res.set_content(response_data.dump(), "application/json");
+    });
+
+
+    svr.Post("/findPalindrome", [](const Request& req, Response &res) {
+        res.set_header("Access-Control-Allow-Origin", "*"); 
+        json request_data = json::parse(req.body);
+        cout << "Received request data: " << request_data.dump() << endl;
+        string sequence_file = request_data["sequence_file"];
+        cout<< "Sequence: " << sequence_file << endl;   
+        string sequence_name = request_data["sequence_name"];
+        cout << "Sequence Name: " << sequence_name << endl;
+
+        vector<char> sequence = readFile(sequence_file);
+
+        pair<int,int> result = genPalindrome(sequence);
+        
+        string filename =  "../data/palindrome/" + sequence_name + ".txt";
+        cout<< "Saving palindrome to file: " << filename << endl;
+        saveToFile(filename, sequence, result);
+
+        cout << "Result: " << result.first << ", " << result.second << endl;
+
+        json palindrome = json::array();
+        for (int i=result.first; i<=result.second; i++) {
+            palindrome.push_back(string(1, sequence[i]));
+        }
+        // Parse the sequence
+        json response_data;
+        response_data["begin"] = result.first;
+        response_data["end"] = result.second;
+        response_data["palindrome"] = palindrome;
         cout << response_data.dump() << endl;
         res.set_content(response_data.dump(), "application/json");
     });
