@@ -26,6 +26,7 @@ findSequenceSlot.appendChild(buttonsContainer);
 
 
 const resultSlot   = document.createElement('h1')
+const sequenceFound = document.createElement('p')
 
 for (const buttonKey in buttons){
     const buttonName = "btn-find" + buttonKey
@@ -37,8 +38,9 @@ for (const buttonKey in buttons){
     button.addEventListener('click', async () => {
         var response = await findGenInSequence(genToFind);
         resultSlot.innerHTML = `Begin: ${response.begin}, End: ${response.end}`;
+        sequenceFound.innerHTML = `Found: ${response.found}`;
     })
 }
 
 findSequenceSlot.appendChild(resultSlot)
-
+findSequenceSlot.appendChild(sequenceFound)
