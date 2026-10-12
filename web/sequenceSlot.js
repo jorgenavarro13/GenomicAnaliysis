@@ -1,41 +1,53 @@
 import { requestSequence } from './api.js';
+import { createVisualSequence } from './genContainer.js';
+
 const fileSlot = document.getElementById('file');
+const buttonsContainer = document.createElement('div');
+
+const buttons = {
+    WuhanButton : "Wuhan",
+    TexasButton : "Texas",
+    MButton : "M",
+    SButton : "S",
+    ORF1ABButton : "ORF1AB"
+}
+
+
+for(const buttonKey in buttons ){
+    const buttonName = buttonKey
+    const innerText = buttons[buttonKey];
+
+    const  button = document.createElement('button');
+    button.name = buttonName;
+    button.id = "btn-" + buttonName
+    button.textContent = innerText;
+    console.log(button.id)
+
+    buttonsContainer.appendChild(button);
+}
+fileSlot.appendChild(buttonsContainer);
+
+
 
 var file = document.createElement('h1');
-file.textContent = 'No file loaded';
+var sequence = document.createElement('p');
+file.textContent = 'No sequence yet';
 fileSlot.appendChild(file);
+fileSlot.appendChild(sequence);
 
+for (const buttonKey in buttons){
+    const buttonName = "btn-" +buttonKey
+    const fileToRequest = buttons[buttonKey];
 
+    const button = document.getElementById(buttonName)
+    console.log(buttonName)
 
-const WuhanButton = document.createElement('button');
-WuhanButton.textContent = "Wuhan";
+    button.addEventListener('click', async () => {
+        var response = await requestSequence(fileToRequest);
 
-fileSlot.appendChild(WuhanButton);
-
-WuhanButton.addEventListener('click', async () => {
-    var response = await requestSequence("Wuhan");
-    console.log(response)
-
-    file.textContent = response.file;
-    fileSlot.innerHTML = response.sequence;
-
-});
-
-
-const TexasButton = document.createElement('button');
-TexasButton.textContent = "Texas";
-
-fileSlot.appendChild(TexasButton);
-
-TexasButton.addEventListener('click', async () => {
-    var response = await requestSequence("Texas");
-    console.log(response)
-
-    file.textContent = response.file;
-    fileSlot.innerHTML = response.sequence;
-});
-
-
-
-
-
+        file.textContent = response.file;
+        sequence.innerHTML = response.sequence;
+        
+        createVisualSequence(sequence, response.sequence)
+    })
+}
