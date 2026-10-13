@@ -130,17 +130,13 @@ int main() {
         vector<char> sequence_a = readFile(sequence_file_a);
         vector<char> sequence_b = readFile(sequence_file_b);
 
-        // readFile returns an empty vector when the file doesn't exist
         if (sequence_a.empty() || sequence_b.empty()) {
-            res.status = 404;
-            res.set_content(R"({"error": "Sequence file not found or empty"})", "application/json");
-            return;
+            res.status = 404; res.set_content(R"({"error": "Sequence file not found or empty"})", "application/json"); return;
         }
 
         ComparisonResult result = compareGenomes(sequence_a, sequence_b);
         cout << "Differences: " << result.differenceIndexes.size() << endl;
 
-        // frames[f] has the codons read starting at offset f
         json frames = json::array();
         for (auto & frame : result.frames) {
             json differences = json::array();
