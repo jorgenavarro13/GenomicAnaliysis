@@ -9,6 +9,8 @@ const sequence_options = {
     "Texas": "../data/SARS-COV-2-MT106054.1.txt",
 };
 
+const proteins_file = "../data/seq-proteins.txt";
+
 async function requestSequence(sequence) {
     if (!sequence || sequence_options[sequence] === undefined) throw new Error('No sequence provided');
 
@@ -66,5 +68,20 @@ async function compareSequences(sequenceA, sequenceB) {
   return res.json();
 }
 
+async function findProteinsInSequence(sequence) {
+    if (!sequence || sequence_options[sequence] === undefined) throw new Error('No sequence provided');
 
-export { requestSequence, findGenInSequence, findPalindromeInSequence, compareSequences };
+    const res = await fetch(`${C_API_URL}/findProteins`, {
+    method: 'POST',
+    body: JSON.stringify({
+      sequence_file : sequence_options[sequence],
+      proteins_file : proteins_file
+    }),
+  });
+
+  if (!res.ok) throw new Error(`POST /findProteins → ${res.status}`);
+  return res.json();
+}
+
+
+export { requestSequence, findGenInSequence, findPalindromeInSequence, compareSequences, findProteinsInSequence };
