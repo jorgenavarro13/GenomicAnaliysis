@@ -7,6 +7,7 @@
 #include "./coincidence.h"
 #include "./palindrome.h"
 #include "./compare.h"
+#include "./proteins.h"
 
 using json = nlohmann::json;
 using namespace std;
@@ -165,6 +166,85 @@ int main() {
             {"end", result.longestEnd},
             {"length", result.longestLength}
         };
+        res.set_content(response_data.dump(), "application/json");
+    });
+
+
+    svr.Post("/findProteins", [](const Request& req, Response &res) {
+        res.set_header("Access-Control-Allow-Origin", "*");
+
+        // Without exceptions: an invalid body gives a discarded json, and we answer 400 instead of failing
+        json request_data = json::parse(req.body, nullptr, false);
+        if (request_data.is_discarded() ||
+            !request_data.contains("sequence_file") || !request_data["sequence_file"].is_string() ||
+            !request_data.contains("proteins_file") || !request_data["proteins_file"].is_string()) {
+            res.status = 400;
+            res.set_content(R"({"error": "Expected sequence_file and proteins_file"})", "application/json");
+            return;
+        }
+        cout << "Received request data: " << request_data.dump() << endl;
+        string sequence_file = request_data["sequence_file"];
+        string proteins_file = request_data["proteins_file"];
+
+        vector<char> genome = readFile(sequence_file);
+        vector<Protein> proteins = readProteins(proteins_file);
+
+        // Both readers return an empty vector when the file doesn't exist
+        if (genome.empty() || proteins.empty()) {
+            res.status = 404;
+            res.set_content(R"({"error": "Sequence or proteins file not found or empty"})", "application/json");
+            return;
+        }
+
+        vector<ProteinMatch> results = findProteins(genome, proteins);
+
+        int n = genome.size(), found = 0, frameshifts = 0;
+        json matches = json::array();
+        for (ProteinMatch & m : results) {
+            found += m.found;
+            frameshifts += m.frameshift;
+
+            // Frame of the second segment (counted on its own strand like m.frame) and the slip:
+            // the second segment starts 3p bases after the first one, moved -1 (a base read twice) or +1 (a base skipped)
+            int shiftFrame = 0, slip = 0;
+            if (m.frameshift) {
+                if (m.strand == '+') {
+                    shiftFrame = m.shiftBegin % 3 + 1;
+                    slip = m.shiftBegin - (m.begin + 3 * m.prefixLength);
+                } else {
+                    // On the reverse strand the genome indexes are mirrored with n - 1 - i
+                    shiftFrame = (n - 1 - m.shiftBegin) % 3 + 1;
+                    slip = (m.end - m.shiftBegin) - 3 * m.prefixLength;
+                }
+            }
+
+            matches.push_back({
+                {"name", m.name},
+                {"length", m.length},
+                {"found", m.found},
+                {"strand", string(1, m.strand)},
+                {"frame", m.frame},
+                {"begin", m.begin},
+                {"end", m.end},
+                {"frameshift", m.frameshift},
+                {"prefixLength", m.prefixLength},
+                {"shiftBegin", m.shiftBegin},
+                {"shiftFrame", shiftFrame},
+                {"slip", slip},
+                {"firstAminoacids", m.firstAminoacids},
+                {"firstCodons", m.firstCodons}
+            });
+        }
+        cout << "Proteins found: " << found << " / " << results.size() << endl;
+
+        json response_data;
+        response_data["sequence_file"] = sequence_file;
+        response_data["proteins_file"] = proteins_file;
+        response_data["genomeLength"] = n;
+        response_data["total"] = results.size();
+        response_data["found"] = found;
+        response_data["frameshifts"] = frameshifts;
+        response_data["proteins"] = matches;
         res.set_content(response_data.dump(), "application/json");
     });
 
