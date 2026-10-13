@@ -1,9 +1,10 @@
 #include <bits/stdc++.h>
+#include "compare.h"
 using namespace std;
 
 // Contribution: Nicté Allelen
 string getAminoAcid(const string& codon) {
-    static unordered_map<string, string> codonMap = {
+    static const unordered_map<string, string> codonMap = {
         {"ATA", "Ile"}, {"ATC", "Ile"}, {"ATT", "Ile"}, {"ATG", "Met"},
         {"ACA", "Thr"}, {"ACC", "Thr"}, {"ACG", "Thr"}, {"ACT", "Thr"},
         {"AAC", "Asn"}, {"AAT", "Asn"}, {"AAA", "Lys"}, {"AAG", "Lys"},
@@ -22,8 +23,9 @@ string getAminoAcid(const string& codon) {
         {"TGC", "Cys"}, {"TGT", "Cys"}, {"TGA", "STOP"}, {"TGG", "Trp"}
     };
     
-    if (codonMap.find(codon) != codonMap.end()) {
-        return codonMap[codon];
+    auto it = codonMap.find(codon);
+    if (it != codonMap.end()) {
+        return it->second;
     }
     return "Desconocido";
 }
@@ -32,61 +34,69 @@ string getAminoAcid(const string& codon) {
 
 /*
     What does this function do?
-    Asumes that the two genomes are aligned and compares them base by base.
+    Asumes that the two genomes are aligned (same start, the shorter one may be cut at the end)
+    and compares them base by base.
+
+    For every base that differs we look at the codon that contains it in the 3 reading frames,
+    because the same base belongs to a different codon depending on where we start reading
+    (offset 0, 1 or 2). If two differences fall in the same codon, that codon is reported once per frame.
 
     Time complexity: O(n) where n is the length of the shorter genome.
-    Space complexity: O(n) since we're storing differences in the sequence.
+    Each base is visited once and each difference is checked in 3 frames, O(1) each.
+    Space complexity: O(d) where d is the number of differences found.
 */
-void compareGenomes(const string& wuhan, const string& texas) {
-    int minLen = min(wuhan.length(), texas.length());
+ComparisonResult compareGenomes(const vector<char>& A, const vector<char>& B) {
+    ComparisonResult result;
+    int minLen = min(A.size(), B.size());
+    result.comparedLength = minLen;
 
     int maxLen=0;
     int maxStartIndex=0;
     int currentLength=0;
     int currentStart=0;
-    int totalDifferences=0;
+    int lastCodon[3] = {-1, -1, -1};  // last codon reported in each frame
 
     for (int i=0;i<minLen;++i) {
-        if (wuhan[i]==texas[i]) {
+        if (A[i]==B[i]) {
             if (currentLength==0) {
                 currentStart=i;
             }
             currentLength++;
-            
+
             if (currentLength>maxLen) {
                 maxLen=currentLength;
                 maxStartIndex=currentStart;
             }
-        } else {
-            currentLength=0;
+            continue;
+        }
 
-            int startCodonIndex=i-(i%3);
+        currentLength=0;
+        result.differenceIndexes.push_back(i);
 
-            if (startCodonIndex+2<minLen) {
-                string codonW=wuhan.substr(startCodonIndex,3);
-                string codonT=texas.substr(startCodonIndex,3);
-                
-                string aminoW=getAminoAcid(codonW);
-                string aminoT=getAminoAcid(codonT);
+        for (int frame=0; frame<3; ++frame) {
+            if (i<frame) continue;  // the base is before the first codon of this frame
 
-                cout<<"Diferencia encontrada en el indice: "<<i<<"\n";
-                cout<<"Wuhan 2019 : Codon ["<<codonW<<"] produce Aminoacido ["<<aminoW<<"]\n";
-                cout<<"Texas 2020 : Codon ["<<codonT<<"] produce Aminoacido ["<<aminoT<<"]\n";
-                totalDifferences++;
-                
-                if (aminoW!=aminoT) {
-                    cout<<"La mutacion altera el aminoacido.\n\n";
-                } else {
-                    cout<<"Mutacion silenciosa (el aminoacido se mantiene igual).\n\n";
-                }
-            }
+            int codonStart = frame + 3*((i-frame)/3);
+            if (codonStart+2>=minLen || codonStart==lastCodon[frame]) continue;
+            lastCodon[frame] = codonStart;
+
+            AminoacidDifference difference;
+            difference.index = i;
+            difference.codonStart = codonStart;
+            difference.codonA = string(A.begin()+codonStart, A.begin()+codonStart+3);
+            difference.codonB = string(B.begin()+codonStart, B.begin()+codonStart+3);
+            difference.aminoA = getAminoAcid(difference.codonA);
+            difference.aminoB = getAminoAcid(difference.codonB);
+            difference.changesAminoacid = difference.aminoA != difference.aminoB;
+
+            result.frames[frame].push_back(difference);
         }
     }
 
-    cout<<"Total de diferencias encontradas: "<<totalDifferences<<"\n";
-    cout<<"\nCadena mas larga sin diferencias\n";
-    cout<<"Longitud: "<<maxLen<<" bases.\n";
-    cout<<"Inicia en el indice: "<<maxStartIndex<<" y termina en: "<<maxStartIndex+maxLen-1<< "\n";
+    result.longestLength = maxLen;
+    result.longestBegin = maxStartIndex;
+    result.longestEnd = maxStartIndex+maxLen-1;
+    return result;
 }
 
 /*
@@ -98,6 +108,8 @@ void compareGenomes(const string& wuhan, const string& texas) {
     Time complexity: O(A*B)  We traverse a matrix of length  lenght(A) * lenght(B)
     Space complexity : O(A*B) We have to store the matrix to compare
 
+    Note: for two full genomes (~30,000 bases each) the matrix needs ~3.6 GB, so this function
+    is for learning and documentation, it should not be called from the server with full genomes.
 
     ----- B - ----
     |
@@ -106,28 +118,30 @@ void compareGenomes(const string& wuhan, const string& texas) {
     |
     |
 
-    Penalties: The simplest scoring schemes simply give a value for each match, mismatch and indel. 
-    This scoring scheme is simple, but it is not very accurate. 
+    Penalties: The simplest scoring schemes simply give a value for each match, mismatch and indel.
+    This scoring scheme is simple, but it is not very accurate.
     There are many different scoring schemes
     More sophisticated scoring schemes take the evolutionary relationships between the sequences into account, and are based on empirical data.
 */
 
-#define match_penalty 1
-#define mismatch_penalty -1
-#define gap_penalty -1
+namespace {
+    const int match_penalty = 1;
+    const int mismatch_penalty = -1;
+    const int gap_penalty = -1;
+}
 
 pair<string, string> allignSequences(const vector<char> &A, const vector<char> &B){
     size_t A_size = A.size(), B_size=B.size();
     vector<vector<int>> matrix(A_size+1, vector<int> (B_size+1, 0));
-    for(int i=0; i<=A_size; i++){
+    for(size_t i=0; i<=A_size; i++){
         matrix[i][0]=i*gap_penalty;
     }
-    for(int j=0; j<=B_size; j++){
+    for(size_t j=0; j<=B_size; j++){
         matrix[0][j]=j*gap_penalty;
     }
 
-    for(int i=1; i<=A_size; i++){
-        for(int j=1; j<=B_size; j++){
+    for(size_t i=1; i<=A_size; i++){
+        for(size_t j=1; j<=B_size; j++){
             int score_diagonal = matrix[i-1][j-1] + (A[i-1]==B[j-1]? match_penalty:mismatch_penalty);
             int score_up = matrix[i-1][j] + gap_penalty;
             int score_left = matrix[i][j-1] + gap_penalty;
@@ -136,7 +150,7 @@ pair<string, string> allignSequences(const vector<char> &A, const vector<char> &
     }
 
     string aligned_A, aligned_B;
-    int i=A_size, j=B_size;
+    size_t i=A_size, j=B_size;
     while(i>0 || j>0){
         if(i>0 && j>0 && matrix[i][j]==matrix[i-1][j-1] + (A[i-1]==B[j-1]? match_penalty:mismatch_penalty)){
             aligned_A+=A[i-1];
@@ -158,26 +172,4 @@ pair<string, string> allignSequences(const vector<char> &A, const vector<char> &
     reverse(aligned_B.begin(), aligned_B.end());
 
     return {aligned_A, aligned_B};
-}
-
-int main(){
-    ifstream wuhanFile("../data/SARS-COV-2-MN908947.3.txt");
-    ifstream texasFile("../data/SARS-COV-2-MT106054.1.txt");
-
-    string wuhan,texas,linea;
-
-    while(getline(texasFile,linea)){
-        texas+=linea;
-    }
-
-    while(getline(wuhanFile,linea)){
-        wuhan+=linea;
-    }
-
-    wuhanFile.close();
-    texasFile.close();
-
-    compareGenomes(wuhan,texas);
-    
-    return 0;
 }
