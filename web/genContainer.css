@@ -1,8 +1,25 @@
 .helix-window {
-    margin: 60px auto 0;
-    padding-bottom: 8px;
+    max-width: 100%;
+    margin: 32px auto 0;
+    padding-bottom: 12px;
     overflow-x: auto;
     overflow-y: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: #cccccc transparent;
+}
+
+.helix-window:focus-visible {
+    outline: 1px solid #111111;
+    outline-offset: 4px;
+}
+
+.helix-window::-webkit-scrollbar {
+    height: 4px;
+}
+
+.helix-window::-webkit-scrollbar-thumb {
+    background: #cccccc;
+    border-radius: 2px;
 }
 
 .helix {
@@ -10,10 +27,13 @@
 }
 
 .helix-position {
+    margin: 8px 0 0;
     text-align: center;
-    font-family: sans-serif;
     font-size: 12px;
-    color: #555;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #666666;
+    font-variant-numeric: tabular-nums;
 }
 
 .pair {
@@ -32,8 +52,17 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    border-radius: 2px;
     color: white;
-    font-family: sans-serif;
     font-size: 10px;
     font-weight: bold;
+}
+
+/* Inside content sections the helix follows the left-aligned text */
+.section-body .helix-window {
+    margin-left: 0;
+}
+
+.section-body .helix-position {
+    text-align: left;
 }

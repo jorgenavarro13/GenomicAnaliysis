@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="genContainer.css">
 </head>
 <body>
-    <div id="container">
+    <header id="container">
         <div id="gen-container" class="gen-container">
             <div class="hero-text">
                 <h1 id="gen-title">Genomic<br>Analysis</h1>
@@ -21,32 +21,65 @@
                 </div>
             </div>
         </div>
-        <script src="genContainer.js"></script>
-    </div>
+    </header>
 
-    <div>
-        <h1> Secuencias desde archivos</h1>
-        <h3> Da click para desplegar alguna de las secuencias a analizar </h3>
-        <div id="file">
-                <!-- Aquí van las secuencias de adn para desplegar--> 
-        </div>
-    </div>
+    <main>
+        <section class="section">
+            <div class="section-header">
+                <span class="section-index">01</span>
+                <div>
+                    <h2 class="section-title">Secuencias desde archivos</h2>
+                    <p class="section-lead">Da click para desplegar alguna de las secuencias a analizar</p>
+                </div>
+            </div>
+            <div id="file" class="section-body">
+                <!-- Aquí van las secuencias de adn para desplegar-->
+            </div>
+        </section>
 
-    <div id="find-sequences-container">
-        <h1>Analiza donde queda cada gen en la secuencia</h1>
-    </div>
+        <section class="section">
+            <div class="section-header">
+                <span class="section-index">02</span>
+                <div>
+                    <h2 class="section-title">Analiza donde queda cada gen en la secuencia</h2>
+                    <p class="section-lead">Busca el gen dentro de la secuencia de Wuhan</p>
+                </div>
+            </div>
+            <div id="find-sequences-container" class="section-body"></div>
+        </section>
 
-    <div id="find-palindromes-container">
-        <h1>Obten los palíndromos en la secuencia</h1>
-    </div>
+        <section class="section">
+            <div class="section-header">
+                <span class="section-index">03</span>
+                <div>
+                    <h2 class="section-title">Obten los palíndromos en la secuencia</h2>
+                    <p class="section-lead">Encuentra el palíndromo más largo de cada gen</p>
+                </div>
+            </div>
+            <div id="find-palindromes-container" class="section-body"></div>
+        </section>
 
+        <section class="section">
+            <div class="section-header">
+                <span class="section-index">04</span>
+                <div>
+                    <h2 class="section-title">Compara las secuencias de Wuhan y Texas</h2>
+                    <p class="section-lead">Encuentra las bases que cambian y su efecto en los aminoácidos en cada marco de lectura</p>
+                </div>
+            </div>
+            <div id="compare-sequences-container" class="section-body"></div>
+        </section>
+    </main>
+
+    <script src="genContainer.js" type="module"></script>
     <script src="api.js" type="module"></script>
     <script src="sequenceSlot.js" type="module"></script>
     <script src="findSequences.js" type="module"></script>
     <script src="findPalindromes.js" type="module"></script>
-    
-    <div id="footer">
+    <script src="compareSequences.js" type="module"></script>
+
+    <footer id="footer">
         <p>© 2026 Genomic Analysis. Jorge Arturo Montiel Navarro, Nicté Allelen Pineda Jiménez, Sylvie Aylin Zabetoglu González.</p>
-    </div>
+    </footer>
 </body>
 </html>

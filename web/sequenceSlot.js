@@ -3,6 +3,7 @@ import { createVisualSequence } from './genContainer.js';
 
 const fileSlot = document.getElementById('file');
 const buttonsContainer = document.createElement('div');
+buttonsContainer.classList.add('button-group');
 
 const buttons = {
     WuhanButton : "Wuhan",
@@ -21,7 +22,6 @@ for(const buttonKey in buttons ){
     button.name = buttonName;
     button.id = "btn-" + buttonName
     button.textContent = innerText;
-    console.log(button.id)
 
     buttonsContainer.appendChild(button);
 }
@@ -29,8 +29,9 @@ fileSlot.appendChild(buttonsContainer);
 
 
 
-var file = document.createElement('h1');
-var sequence = document.createElement('p');
+var file = document.createElement('h3');
+var sequence = document.createElement('div');
+file.classList.add('result-title', 'is-empty');
 file.textContent = 'No sequence yet';
 fileSlot.appendChild(file);
 fileSlot.appendChild(sequence);
@@ -40,14 +41,30 @@ for (const buttonKey in buttons){
     const fileToRequest = buttons[buttonKey];
 
     const button = document.getElementById(buttonName)
-    console.log(buttonName)
 
     button.addEventListener('click', async () => {
-        var response = await requestSequence(fileToRequest);
+        buttonsContainer.querySelectorAll('button').forEach(b => b.classList.remove('is-active'));
+        button.classList.add('is-active', 'is-loading');
 
-        file.textContent = response.file;
-        sequence.innerHTML = response.sequence;
-        
+        var response = await requestSequence(fileToRequest);
+        button.classList.remove('is-loading');
+
+        // "../data/gen-M.txt" -> "gen-M"
+        file.textContent = response.file.split('/').pop().replace('.txt', '');
+        file.classList.remove('is-empty');
+
+        sequence.innerHTML = '';
         createVisualSequence(sequence, response.sequence)
+
+        const label = document.createElement('span');
+        label.classList.add('result-label');
+        label.textContent = `Secuencia · ${response.sequence.length} bases`;
+        label.style.marginTop = '32px';
+
+        const text = document.createElement('p');
+        text.classList.add('sequence-text');
+        text.textContent = response.sequence.join('');
+
+        sequence.append(label, text);
     })
 }
