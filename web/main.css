@@ -244,6 +244,14 @@ body {
     display: none;
 }
 
+/* Comparison report: one line per frame, so we keep the line breaks and don't cut words */
+.comparison-text {
+    max-height: 420px;
+    white-space: pre-wrap;
+    word-break: normal;
+    overflow-x: auto;
+}
+
 /* ---------- Footer ---------- */
 
 #footer {
