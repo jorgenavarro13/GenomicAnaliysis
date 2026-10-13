@@ -51,5 +51,20 @@ async function findPalindromeInSequence(sequence) {
   return res.json();
 }
 
+async function compareSequences(sequenceA, sequenceB) {
+    if (sequence_options[sequenceA] === undefined || sequence_options[sequenceB] === undefined) throw new Error('No sequences to compare provided');
 
-export { requestSequence, findGenInSequence, findPalindromeInSequence };
+    const res = await fetch(`${C_API_URL}/compareGenomes`, {
+    method: 'POST',
+    body: JSON.stringify({
+      sequence_file_a : sequence_options[sequenceA],
+      sequence_file_b : sequence_options[sequenceB]
+    }),
+  });
+
+  if (!res.ok) throw new Error(`POST /compareGenomes → ${res.status}`);
+  return res.json();
+}
+
+
+export { requestSequence, findGenInSequence, findPalindromeInSequence, compareSequences };
