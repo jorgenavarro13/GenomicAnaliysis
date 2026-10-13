@@ -42,12 +42,13 @@ for (const buttonKey in buttons){
 
         resultSlot.innerHTML = `
             <div class="stats">
+                <div class="stat"><span class="stat-label">Gene</span><span class="stat-value">${genToFind}</span></div>
                 <div class="stat"><span class="stat-label">Begin</span><span class="stat-value">${response.begin}</span></div>
                 <div class="stat"><span class="stat-label">End</span><span class="stat-value">${response.end}</span></div>
             </div>`;
         sequenceFound.innerHTML = `
-            <span class="result-label">Found</span>
-            <p class="sequence-text">${response.found.join('')}</p>`;
+            <span class="result-label">First 12 characters</span>
+            <p class="sequence-text">${response.found.slice(0, 12).join('')}</p>`;
     })
 }
 
