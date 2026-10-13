@@ -52,19 +52,6 @@ namespace {
         if(strand == '+') return {start, finish};
         return {genomeSize - 1 - finish, genomeSize - 1 - start};
     }
-
-    const int ANCHOR_LENGTH = 20;         // aminoacids used as anchor to find the second segment
-    const int CUT_WINDOW = 5;             // how many cut points we try after the longest extension
-    const int MIN_FRAMESHIFT_LENGTH = 100; // shorter proteins are not searched with frameshift
-
-    // Checks that the codons that start at dna[start] produce the first "length" aminoacids
-    bool prefixMatchesAt(vector<char> & dna, int start, vector<char> & sequence, int length){
-        if(start < 0 || start + 3 * length > (int)dna.size()) return false;
-        for(int k = 0; k < length; k++){
-            if(translateCodon(dna, start + 3 * k) != sequence[k]) return false;
-        }
-        return true;
-    }
 }
 
 /*
@@ -151,28 +138,83 @@ namespace {
     // Result of looking for a protein that shifts frame in the middle
     struct FrameshiftMatch {
         bool found;
-        int translation;     // 0..2 direct frames, 3..5 reverse frames (same order as translations[])
+        int translation;     // frame of the first segment: 0..2 direct, 3..5 reverse (same order as translations[])
         int firstStart;      // index in the strand where the first segment starts
         int secondStart;     // index in the strand where the second segment starts
         int prefixLength;    // aminoacids of the first segment
     };
 
     /*
-        Looks for a protein that cannot be found in a single frame because the ribosome shifts
-        frame in the middle. We search the last ANCHOR_LENGTH aminoacids in the 6 frames,
-        extend that match backwards while it still agrees with the protein, and then check that
-        the missing beginning (the prefix) is produced by the codons right before,
-        shifted one base (slip -1: the ribosome goes back one base, slip +1: it skips one).
-        It only works inside the same strand.
+        KMP over the whole text, keeping the state at every position: states[x] is the length of
+        the longest beginning of the pattern that ends exactly at text[x].
 
-        Time complexity: O(N + L)
-        One KMP search of the anchor in each frame, the extension takes at most L steps, and we
-        verify a constant number of cut points (each one costs at most L).
-
-        Space complexity: O(L)
-        We only copy the anchor.
+        Time complexity: O(n + m)
+        Space complexity: O(n)
     */
-    FrameshiftMatch findFrameshift(vector<char> translations[], vector<char> & genome, vector<char> & reverseStrand, vector<char> & sequence){
+    vector<int> prefixEndingAt(vector<char> & text, vector<char> & pattern){
+        int n = text.size(), m = pattern.size();
+        vector<int> states(n, 0);
+        if(m == 0) return states;
+
+        vector<int> LPS = lps(pattern);
+        int j = 0;
+        for(int i = 0; i < n; i++){
+            while(j > 0 && (j == m || text[i] != pattern[j])) j = LPS[j - 1];
+            if(text[i] == pattern[j]) j++;
+            states[i] = j;
+        }
+        return states;
+    }
+
+    /*
+        The same idea backwards: states[y] is the length of the longest ending of the pattern
+        that starts exactly at text[y]. We run prefixEndingAt with both reversed, a match that
+        ends at reversed[n-1-y] starts at y in the original text.
+
+        Time complexity: O(n + m)
+        Space complexity: O(n + m)
+    */
+    vector<int> suffixStartingAt(vector<char> & text, vector<char> & pattern){
+        vector<char> reversedText(text.rbegin(), text.rend());
+        vector<char> reversedPattern(pattern.rbegin(), pattern.rend());
+        vector<int> reversedStates = prefixEndingAt(reversedText, reversedPattern);
+        return vector<int>(reversedStates.rbegin(), reversedStates.rend());
+    }
+
+    // Checks that text[from .. from+length-1] is equal to sequence[begin .. begin+length-1]
+    bool sameAminoacids(vector<char> & text, int from, vector<char> & sequence, int begin, int length){
+        for(int k = 0; k < length; k++){
+            if(text[from + k] != sequence[begin + k]) return false;
+        }
+        return true;
+    }
+
+    /*
+        Looks for a protein that cannot be found in a single frame because the ribosome shifts
+        frame in the middle: the first p aminoacids are read in one frame and the rest in the frame
+        shifted one base (slip -1: the ribosome goes back one base and reads it twice, slip +1: it
+        skips one). Both segments are on the same strand.
+
+        For every frame we know, at each position, the longest beginning of the protein that ends
+        there (a, prefixEndingAt) and the longest ending that starts there (b, suffixStartingAt).
+        If the first segment ends at codon x, the second one starts 3 + slip bases later, and the
+        shift is only possible when a + b >= L. Then any cut p between L - b and a is a candidate,
+        and we verify it. There is no fixed anchor or window: the shift can be at any aminoacid,
+        from the second to the last one, and the protein can have any length >= 2.
+
+        When several cuts explain the protein (the aminoacids around the shift are the same in
+        both frames) we report the shortest first segment, the earliest point where the shift can be.
+
+        Time complexity: O(N + L) per protein
+        6 forward and 6 backward KMP passes over texts of about N/3 aminoacids. Each candidate costs
+        O(L) to verify, and a candidate needs a + b >= L, which in a real genome only happens where
+        the protein really is. A very repetitive genome and protein (like AAAA...) could produce many
+        candidates, up to O(N * L).
+
+        Space complexity: O(N + L)
+        The KMP states of the 6 frames.
+    */
+    FrameshiftMatch findFrameshift(vector<char> translations[], vector<char> & sequence){
         FrameshiftMatch result;
         result.found = false;
         result.translation = -1;
@@ -180,32 +222,38 @@ namespace {
         result.prefixLength = 0;
 
         int L = sequence.size();
-        vector<char> anchor(sequence.end() - ANCHOR_LENGTH, sequence.end());
+        vector<int> prefixes[6], suffixes[6];
+        for(int t = 0; t < 6; t++){
+            prefixes[t] = prefixEndingAt(translations[t], sequence);
+            suffixes[t] = suffixStartingAt(translations[t], sequence);
+        }
 
         for(int t = 0; t < 6; t++){
-            vector<char> & dna = (t < 3) ? genome : reverseStrand;
+            int strandOffset = (t < 3) ? 0 : 3;
             int frame = t % 3;
-            vector<int> hits = findAllMatches(translations[t], anchor);
 
-            for(int h : hits){
-                // Extend the anchor backwards while the aminoacids still match
-                int extension = 0;
-                while(extension < L - ANCHOR_LENGTH && h - extension - 1 >= 0 &&
-                      translations[t][h - extension - 1] == sequence[L - ANCHOR_LENGTH - extension - 1]){
-                    extension++;
-                }
-                int shortestPrefix = L - ANCHOR_LENGTH - extension;
+            for(int x = 0; x < (int)translations[t].size(); x++){
+                int a = prefixes[t][x];
+                if(a == 0) continue;
 
-                // Try the cut points: the second segment starts at aminoacid p of the protein
-                for(int p = max(1, shortestPrefix); p <= shortestPrefix + CUT_WINDOW && p <= L - ANCHOR_LENGTH; p++){
-                    int secondStart = frame + 3 * (h - (L - ANCHOR_LENGTH - p));
+                for(int slip : {-1, 1}){
+                    // The first segment ends with the codon that starts at frame + 3x,
+                    // the second one starts 3 bases later, moved by the slip
+                    int secondStart = frame + 3 * x + 3 + slip;
+                    int secondFrame = secondStart % 3;
+                    int y = (secondStart - secondFrame) / 3;
+                    int second = strandOffset + secondFrame;
+                    if(y >= (int)translations[second].size()) continue;
 
-                    for(int slip : {-1, 1}){
-                        int firstStart = secondStart - 3 * p - slip;
-                        if(prefixMatchesAt(dna, firstStart, sequence, p)){
+                    int b = suffixes[second][y];
+                    if(a + b < L) continue;
+
+                    for(int p = max(1, L - b); p <= min(a, L - 1); p++){
+                        if(sameAminoacids(translations[t], x - p + 1, sequence, 0, p) &&
+                           sameAminoacids(translations[second], y, sequence, p, L - p)){
                             result.found = true;
                             result.translation = t;
-                            result.firstStart = firstStart;
+                            result.firstStart = frame + 3 * (x - p + 1);
                             result.secondStart = secondStart;
                             result.prefixLength = p;
                             return result;
@@ -282,8 +330,8 @@ vector<ProteinMatch> findProteins(vector<char> & genome, vector<Protein> & prote
         }
 
         // Not in a single frame: maybe the ribosome shifts frame in the middle
-        if(!match.found && match.length > MIN_FRAMESHIFT_LENGTH){
-            FrameshiftMatch shift = findFrameshift(translations, genome, reverseStrand, protein.sequence);
+        if(!match.found){
+            FrameshiftMatch shift = findFrameshift(translations, protein.sequence);
             if(shift.found){
                 char strand = (shift.translation < 3) ? '+' : '-';
                 vector<char> & dna = (strand == '+') ? genome : reverseStrand;
@@ -334,8 +382,8 @@ vector<Protein> readProteins(string filename){
     vector<Protein> proteins;
     ifstream file(filename);
 
+    // Same as readFile: an empty result means the file could not be read
     if(!file.is_open()){
-        cerr << "Could not open " << filename << endl;
         return proteins;
     }
 
@@ -363,62 +411,3 @@ vector<Protein> readProteins(string filename){
     }
     return proteins;
 }
-
-#ifdef PROTEINS_MAIN
-int main(){
-    vector<char> genome = readFile("../data/SARS-COV-2-MN908947.3.txt");
-    vector<Protein> proteins = readProteins("../data/seq-proteins.txt");
-
-    vector<ProteinMatch> results = findProteins(genome, proteins);
-    cout << "Proteins in SARS-CoV-2 Wuhan genome (MN908947.3), indexes are 0-based" << endl << endl;
-    cout << left << setw(13) << "Protein" << setw(21) << "Length (aminoacids)" << setw(7) << "Frame"
-         << setw(17) << "Genome indexes" << setw(20) << "First 4 aminoacids" << "Codons" << endl;
-    cout << string(95, '-') << endl;
-
-    int found = 0, frameshifts = 0;
-    for(ProteinMatch & m : results){
-        cout << left << setw(13) << m.name << setw(21) << m.length;
-        if(!m.found){
-            cout << "not found" << endl;
-            continue;
-        }
-        found++;
-        string frame = string(1, m.strand) + to_string(m.frame);
-        string indexes = to_string(m.begin) + " - " + to_string(m.end);
-        string codons;
-        for(string & codon : m.firstCodons) codons += codon;
-        cout << setw(7) << frame << setw(17) << indexes << setw(20) << m.firstAminoacids << codons << endl;
-
-        if(m.frameshift){
-            frameshifts++;
-            if(m.strand == '+'){
-                cout << string(13, ' ') << "-> frameshift -1: aminoacids 1-" << m.prefixLength << " from "
-                     << m.begin << "-" << m.begin + 3 * m.prefixLength - 1 << " (frame " << frame << "), aminoacids "
-                     << m.prefixLength + 1 << "-" << m.length << " from " << m.shiftBegin << "-" << m.end
-                     << " (frame +" << m.shiftBegin % 3 + 1 << "), base " << m.shiftBegin << " is read twice" << endl;
-            }
-        }
-    }
-    cout << string(95, '-') << endl;
-    cout << "Proteins found: " << found << " / " << results.size() << " (" << frameshifts << " with frameshift)" << endl;
-
-    // Check: exact hits per strand, searching every protein in the 6 frames
-    vector<char> rc = reverseComplement(genome);
-    vector<char> direct[3], inverse[3];
-    for(int f = 0; f < 3; f++){
-        direct[f] = translateFrame(genome, f);
-        inverse[f] = translateFrame(rc, f);
-    }
-
-    int forwardHits = 0, reverseHits = 0;
-    for(Protein & p : proteins){
-        for(int f = 0; f < 3; f++){
-            forwardHits += findAllMatches(direct[f], p.sequence).size();
-            reverseHits += findAllMatches(inverse[f], p.sequence).size();
-        }
-    }
-    cout << "Exact matches in direct strand (+1, +2, +3): " << forwardHits << endl;
-    cout << "Exact matches in reverse strand (-1, -2, -3): " << reverseHits << endl;
-    return 0;
-}
-#endif
